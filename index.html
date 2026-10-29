@@ -83,6 +83,56 @@ home=function(){
  v2home();
  el().innerHTML+=`<div class="card"><p class="eyebrow">New in version 3</p><h3>✨ A more thoughtful dog match</h3><p class="muted">17 lifestyle questions now consider stairs, floor plans, outdoor access, backup care, training time and life stage. Your results explain both strengths and trade-offs.</p><button class="btn" onclick="startQuiz()">Explore my best matches →</button></div>`;
 };
+/* Version 4: non-destructive questionnaire persistence and mobile navigation */
+const phV4StorageKey='pupharmony-v1';
+const phV4OriginalQuiz=quiz;
+const phV4OriginalHome=home;
+const phV4OriginalGo=go;
+const phV4OriginalNext=nextQuiz;
+const phV4OriginalRender=render;
+function phV4ClampStep(value){const n=Number(value);return Number.isInteger(n)?Math.max(0,Math.min(questions.length,n)):0}
+step=phV4ClampStep(state.quizStep);
+function phV4RememberStep(){state.quizStep=phV4ClampStep(step);save()}
+function phV4SaveCurrentAnswer(){
+ const item=questions[step],chosen=document.querySelector('input[name="answer"]:checked');
+ if(item&&chosen){state.answers[item[0]]=chosen.value;save()}
+}
+function nextQuiz(){
+ const item=questions[step],chosen=document.querySelector('input[name="answer"]:checked');
+ if(!item){go('results');return}
+ if(!chosen){alert('Choose an answer to continue.');return}
+ state.answers[item[0]]=chosen.value;
+ step=Math.min(questions.length,step+1);
+ phV4RememberStep();
+ if(step>=questions.length){go('results')}else{render();window.scrollTo(0,0)}
+}
+function phV4Previous(){phV4SaveCurrentAnswer();step=Math.max(0,step-1);phV4RememberStep();render();window.scrollTo(0,0)}
+function phV4SaveExit(){phV4SaveCurrentAnswer();phV4RememberStep();go('home')}
+function startQuiz(){step=phV4ClampStep(state.quizStep);go('quiz')}
+function phV4RestartQuiz(){if(!confirm('Start the questionnaire over? Your previous answers will be kept so you can revise them.'))return;step=0;phV4RememberStep();go('quiz')}
+quiz=function(){
+ if(step>=questions.length){go('results');return}
+ phV4OriginalQuiz();
+ const area=el();
+ const previous=area.querySelector('button[onclick*="step--"]');
+ if(previous)previous.setAttribute('onclick','phV4Previous()');
+ const controls=document.createElement('div');controls.className='ph-v4-controls';
+ controls.innerHTML='<button class="btn outline" type="button" onclick="phV4SaveExit()">Save &amp; Exit</button>';
+ const buttons=area.querySelector('button[onclick="nextQuiz()"]');
+ if(buttons)buttons.insertAdjacentElement('afterend',controls);else area.appendChild(controls);
+};
+home=function(){
+ phV4OriginalHome();
+ const completed=Object.keys(state.answers).length;
+ const card=document.createElement('div');card.className='card';
+ card.innerHTML='<h3>♡ Your personalized match</h3><p class="muted">'+(completed?'Your answers are saved on this device. Continue at question '+Math.min(step+1,questions.length)+' of '+questions.length+'.':'Begin your lifestyle questionnaire to find potential companions.')+'</p><button class="btn" type="button" onclick="startQuiz()">'+(completed?'Resume my questionnaire →':'Start matching →')+'</button>'+(completed?'<button class="btn secondary" type="button" onclick="phV4RestartQuiz()">Review from question 1</button>':'');
+ el().prepend(card);
+};
+const phV4OriginalNav=nav;
+nav=function(){phV4OriginalNav();const n=document.getElementById('nav');n.setAttribute('aria-label','Main navigation');n.querySelectorAll('button').forEach(b=>{b.type='button'})};
+const phV4Style=document.createElement('style');
+phV4Style.textContent='main{padding-bottom:calc(125px + env(safe-area-inset-bottom));}nav{z-index:10;min-height:68px;} .ph-v4-controls{margin-top:4px} .ph-v4-controls .btn{margin-bottom:12px} #view{overflow-wrap:anywhere} .card{max-width:100%} button{touch-action:manipulation} @media(max-width:480px){main{padding-left:18px;padding-right:18px} .dog{font-size:48px} .card{padding:15px} nav button{min-width:52px}}';
+document.head.appendChild(phV4Style);
 render();
 </script>
 </body></html>
